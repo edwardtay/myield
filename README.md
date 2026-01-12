@@ -1,116 +1,106 @@
 # mYield
 
-**Multi-strategy yield aggregator for Mantle.** Auto-rebalancing ERC4626 vaults that route deposits to optimal DeFi yield sources.
+Multi-strategy ERC4626 yield aggregator on Mantle. Routes capital across Lendle and mETH via Merchant Moe.
 
-## Live on Mantle Mainnet
+## Deployments (Mantle Mainnet)
 
 | Contract | Address |
 |----------|---------|
-| **USDC Vault** | [`0xcfF09905F8f18B35F5A1Ba6d2822D62B3d8c48bE`](https://mantlescan.xyz/address/0xcfF09905F8f18B35F5A1Ba6d2822D62B3d8c48bE#code) |
-| **WETH Vault** | [`0x073b61f5Ed26d802b05301e0E019f78Ac1A41D23`](https://mantlescan.xyz/address/0x073b61f5Ed26d802b05301e0E019f78Ac1A41D23#code) |
+| USDC Vault | [`0xcfF09905F8f18B35F5A1Ba6d2822D62B3d8c48bE`](https://mantlescan.xyz/address/0xcfF09905F8f18B35F5A1Ba6d2822D62B3d8c48bE#code) |
+| WETH Vault | [`0x073b61f5Ed26d802b05301e0E019f78Ac1A41D23`](https://mantlescan.xyz/address/0x073b61f5Ed26d802b05301e0E019f78Ac1A41D23#code) |
 | Lendle USDC Adapter | [`0xf98a4A0482d534c004cdB9A3358fd71347c4395B`](https://mantlescan.xyz/address/0xf98a4A0482d534c004cdB9A3358fd71347c4395B#code) |
 | Lendle WETH Adapter | [`0x8F878deCd44f7Cf547D559a6e6D0577E370fa0Db`](https://mantlescan.xyz/address/0x8F878deCd44f7Cf547D559a6e6D0577E370fa0Db#code) |
 | mETH Adapter | [`0xEff2eC240CEB2Ddf582Df0e42fc66a6910D3Fe3f`](https://mantlescan.xyz/address/0xEff2eC240CEB2Ddf582Df0e42fc66a6910D3Fe3f#code) |
 
-## Vaults
+## Strategies
 
-### USDC Vault (myUSDC)
-- **Strategy:** 100% Lendle lending
-- **Yield Source:** Supply interest + LEND rewards
-- **APY:** ~4-8%
+**USDC Vault** → 100% Lendle (supply USDC, earn interest + LEND)
 
-### WETH Vault (myWETH)
-- **Strategy:** 60% Lendle + 40% mETH
-- **Yield Sources:**
-  - Lendle: WETH lending yield + LEND rewards
-  - mETH: Liquid staking yield via Merchant Moe swap
-- **APY:** ~4-6% blended
+**WETH Vault** → 60% Lendle / 40% mETH
+- Lendle: `LendingPool.deposit()` → aWETH
+- mETH: `MoeRouter.swapExactTokensForTokens(WETH, mETH)` → LST yield
 
-## Protocol Integrations
+## Protocol Integration
 
-| Protocol | Type | Integration |
-|----------|------|-------------|
-| **Lendle** | Lending (Aave V2 fork) | Deposit/withdraw via LendingPool |
-| **mETH** | Liquid Staking Token | WETH → mETH swap via Merchant Moe |
-| **Merchant Moe** | DEX | Real-time swaps for mETH strategy |
+```solidity
+// Lendle (Aave V2)
+ILendingPool(0xCFa5aE7c2CE8Fadc6426C1ff872cA45378Fb7cF3).deposit(asset, amount, onBehalfOf, 0);
+
+// mETH via Merchant Moe
+IMoeRouter(0xeaEE7EE68874218c3558b40063c42B82D3E7232a).swapExactTokensForTokens(
+    amount, minOut, [WETH, METH], address(this), deadline
+);
+```
 
 ## Architecture
 
 ```
-User deposits USDC/WETH
-        ↓
-   mYieldVault (ERC4626)
-        ↓
-   ┌────┴────┐
-   │ Router  │ ← Target allocations
-   └────┬────┘
-        ↓
-  ┌─────┴─────┐
-  │  Adapters │
-  ├───────────┤
-  │ Lendle    │ → Lending yield (USDC/WETH)
-  │ mETH      │ → LST yield via DEX swap
-  └───────────┘
+┌─────────────────────────────────────────────────────────┐
+│                    mYieldVault (ERC4626)                │
+│  - deposit(assets, receiver) → shares                   │
+│  - withdraw(assets, receiver, owner) → shares           │
+│  - rebalance() → redistribute to target allocations     │
+│  - harvest() → claim rewards, compound                  │
+├─────────────────────────────────────────────────────────┤
+│                    Adapter Router                       │
+│  AdapterInfo[] adapters                                 │
+│  - allocation (bps)                                     │
+│  - deposited                                            │
+│  - active                                               │
+├──────────────────────┬──────────────────────────────────┤
+│   LendleAdapter      │         METHAdapter              │
+│   - LendingPool      │   - MoeRouter.swap()             │
+│   - aToken receipt   │   - holds mETH                   │
+│   - harvest LEND     │   - yield via rate appreciation  │
+└──────────────────────┴──────────────────────────────────┘
 ```
 
-## Key Features
-
-- **ERC4626 Standard** - Composable vault shares (myUSDC, myWETH)
-- **Multi-Strategy** - Automatic allocation across yield sources
-- **Auto-Rebalancing** - Maintains target allocations
-- **Harvesting** - Claims and compounds rewards
-- **Real Protocol Integration** - Live on Mantle mainnet with real TVL
-
-## Build & Deploy
+## On-Chain State
 
 ```bash
-cd contracts
-forge install
-forge build
+# USDC Vault TVL
+cast call 0xcfF09905F8f18B35F5A1Ba6d2822D62B3d8c48bE "totalAssets()" --rpc-url https://rpc.mantle.xyz
 
-# Deploy
-source .env
-forge script script/Deploy.s.sol:DeployWETHVault --rpc-url https://rpc.mantle.xyz --broadcast
+# WETH Vault TVL
+cast call 0x073b61f5Ed26d802b05301e0E019f78Ac1A41D23 "totalAssets()" --rpc-url https://rpc.mantle.xyz
+
+# mETH held in adapter (real swap happened)
+cast call 0xcDA86A272531e8640cD7F1a92c01839911B90bb0 "balanceOf(address)" 0xEff2eC240CEB2Ddf582Df0e42fc66a6910D3Fe3f --rpc-url https://rpc.mantle.xyz
 ```
 
-## Frontend
+## Vault Interface
+
+```solidity
+// ERC4626
+function deposit(uint256 assets, address receiver) external returns (uint256 shares);
+function withdraw(uint256 assets, address receiver, address owner) external returns (uint256 shares);
+function redeem(uint256 shares, address receiver, address owner) external returns (uint256 assets);
+
+// Extensions
+function getWeightedAPY() external view returns (uint256);  // bps
+function rebalance() external;                              // keeper
+function harvest() external returns (uint256);              // claim + compound
+```
+
+## Run
 
 ```bash
-cd frontend
-npm install
-npm run dev
+# Contracts
+cd contracts && forge build
+
+# Frontend
+cd frontend && npm i && npm run dev
 ```
 
 ## Addresses
 
-### Mantle Mainnet Tokens
 ```
-USDC:   0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9
-WETH:   0xdEAddEaDdeadDEadDEADDEAddEADDEAddead1111
-mETH:   0xcDA86A272531e8640cD7F1a92c01839911B90bb0
-```
-
-### Integrated Protocols
-```
+USDC:                 0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9
+WETH:                 0xdEAddEaDdeadDEadDEADDEAddEADDEAddead1111
+mETH:                 0xcDA86A272531e8640cD7F1a92c01839911B90bb0
 Lendle LendingPool:   0xCFa5aE7c2CE8Fadc6426C1ff872cA45378Fb7cF3
-Lendle Incentives:    0x79e2fd1c484EB9EE45001A98Ce31F28918F27C41
 Merchant Moe Router:  0xeaEE7EE68874218c3558b40063c42B82D3E7232a
 ```
-
-## Security
-
-- ERC4626 standard (OpenZeppelin audited)
-- ReentrancyGuard on deposit/withdraw
-- Owner-only adapter management
-- Emergency withdrawal functions
-- Slippage protection on DEX swaps
-
-## Hackathon Track
-
-**DeFi & Composability**
-- Composable yield optimizer (ERC4626)
-- Multi-protocol integration (Lendle + mETH + Merchant Moe)
-- Real mainnet deployment with TVL
 
 ## License
 
