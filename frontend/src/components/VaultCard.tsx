@@ -3,9 +3,21 @@
 import { useState, useEffect } from 'react'
 import { useAccount, useReadContract, useWriteContract, useWaitForTransactionReceipt } from 'wagmi'
 import { parseUnits, formatUnits } from 'viem'
-import { CONTRACTS, VAULT_ABI, ERC20_ABI } from '@/lib/contracts'
+import { VAULT_ABI, ERC20_ABI } from '@/lib/contracts'
 
-export function VaultCard() {
+interface VaultConfig {
+  name: string
+  symbol: string
+  address: string
+  asset: string
+  assetSymbol: string
+  decimals: number
+  strategies: string[]
+  allocation: string
+  description: string
+}
+
+export function VaultCard({ vault }: { vault: VaultConfig }) {
   const { address, isConnected } = useAccount()
   const [amount, setAmount] = useState('')
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit')
@@ -15,49 +27,43 @@ export function VaultCard() {
 
   // Read vault data
   const { data: totalAssets, refetch: refetchAssets } = useReadContract({
-    address: CONTRACTS.MYIELD_VAULT,
+    address: vault.address as `0x${string}`,
     abi: VAULT_ABI,
     functionName: 'totalAssets',
   })
 
-  const { data: vaultName } = useReadContract({
-    address: CONTRACTS.MYIELD_VAULT,
-    abi: VAULT_ABI,
-    functionName: 'name',
-  })
-
   const { data: weightedAPY } = useReadContract({
-    address: CONTRACTS.MYIELD_VAULT,
+    address: vault.address as `0x${string}`,
     abi: VAULT_ABI,
     functionName: 'getWeightedAPY',
   })
 
   const { data: userShares, refetch: refetchShares } = useReadContract({
-    address: CONTRACTS.MYIELD_VAULT,
+    address: vault.address as `0x${string}`,
     abi: VAULT_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
   })
 
   const { data: userAssets, refetch: refetchUserAssets } = useReadContract({
-    address: CONTRACTS.MYIELD_VAULT,
+    address: vault.address as `0x${string}`,
     abi: VAULT_ABI,
     functionName: 'convertToAssets',
     args: userShares ? [userShares] : undefined,
   })
 
-  const { data: usdcBalance, refetch: refetchUsdcBalance } = useReadContract({
-    address: CONTRACTS.USDC,
+  const { data: assetBalance, refetch: refetchAssetBalance } = useReadContract({
+    address: vault.asset as `0x${string}`,
     abi: ERC20_ABI,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
   })
 
   const { data: allowance, refetch: refetchAllowance } = useReadContract({
-    address: CONTRACTS.USDC,
+    address: vault.asset as `0x${string}`,
     abi: ERC20_ABI,
     functionName: 'allowance',
-    args: address ? [address, CONTRACTS.MYIELD_VAULT] : undefined,
+    args: address ? [address, vault.address as `0x${string}`] : undefined,
   })
 
   // Refetch on success
@@ -66,28 +72,28 @@ export function VaultCard() {
       refetchAssets()
       refetchShares()
       refetchUserAssets()
-      refetchUsdcBalance()
+      refetchAssetBalance()
       refetchAllowance()
       setAmount('')
     }
   }, [isSuccess])
 
-  const parsedAmount = amount ? parseUnits(amount, 6) : BigInt(0)
+  const parsedAmount = amount ? parseUnits(amount, vault.decimals) : BigInt(0)
   const needsApproval = allowance !== undefined && parsedAmount > allowance
 
   const handleApprove = () => {
     writeContract({
-      address: CONTRACTS.USDC,
+      address: vault.asset as `0x${string}`,
       abi: ERC20_ABI,
       functionName: 'approve',
-      args: [CONTRACTS.MYIELD_VAULT, parsedAmount],
+      args: [vault.address as `0x${string}`, parsedAmount],
     })
   }
 
   const handleDeposit = () => {
     if (!address) return
     writeContract({
-      address: CONTRACTS.MYIELD_VAULT,
+      address: vault.address as `0x${string}`,
       abi: VAULT_ABI,
       functionName: 'deposit',
       args: [parsedAmount, address],
@@ -97,19 +103,20 @@ export function VaultCard() {
   const handleWithdraw = () => {
     if (!address) return
     writeContract({
-      address: CONTRACTS.MYIELD_VAULT,
+      address: vault.address as `0x${string}`,
       abi: VAULT_ABI,
       functionName: 'withdraw',
       args: [parsedAmount, address, address],
     })
   }
 
-  const formatUSDC = (value: bigint | undefined) => {
+  const formatBalance = (value: bigint | undefined) => {
     if (value === undefined) return '0.00'
-    return parseFloat(formatUnits(value, 6)).toLocaleString('en-US', {
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    })
+    const formatted = parseFloat(formatUnits(value, vault.decimals))
+    if (vault.decimals === 18) {
+      return formatted.toLocaleString('en-US', { minimumFractionDigits: 4, maximumFractionDigits: 4 })
+    }
+    return formatted.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
   }
 
   const formatAPY = (value: bigint | undefined) => {
@@ -120,34 +127,46 @@ export function VaultCard() {
   return (
     <div className="bg-gray-900 rounded-2xl p-6 border border-gray-800">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xl font-bold">{vaultName || 'mYield USDC Vault'}</h2>
-          <p className="text-sm text-gray-400 mt-1">Earn yield on USDC via Lendle</p>
+          <h2 className="text-lg font-bold">{vault.name}</h2>
+          <p className="text-xs text-gray-400">{vault.description}</p>
         </div>
         <div className="text-right">
-          <div className="text-2xl font-bold text-green-400">{formatAPY(weightedAPY)}%</div>
+          <div className="text-xl font-bold text-green-400">{formatAPY(weightedAPY)}%</div>
           <div className="text-xs text-gray-400">APY</div>
         </div>
       </div>
 
+      {/* Strategy Tags */}
+      <div className="flex flex-wrap gap-2 mb-4">
+        {vault.strategies.map((strategy) => (
+          <span key={strategy} className="px-2 py-1 bg-blue-600/20 text-blue-400 text-xs rounded-full">
+            {strategy}
+          </span>
+        ))}
+        <span className="px-2 py-1 bg-gray-700 text-gray-300 text-xs rounded-full">
+          {vault.allocation}
+        </span>
+      </div>
+
       {/* Stats */}
-      <div className="grid grid-cols-2 gap-4 mb-6">
-        <div className="bg-gray-800/50 rounded-xl p-4">
-          <div className="text-sm text-gray-400 mb-1">Total Value Locked</div>
-          <div className="text-lg font-semibold">${formatUSDC(totalAssets)}</div>
+      <div className="grid grid-cols-2 gap-3 mb-4">
+        <div className="bg-gray-800/50 rounded-xl p-3">
+          <div className="text-xs text-gray-400 mb-1">TVL</div>
+          <div className="font-semibold">{formatBalance(totalAssets)} {vault.assetSymbol}</div>
         </div>
-        <div className="bg-gray-800/50 rounded-xl p-4">
-          <div className="text-sm text-gray-400 mb-1">Your Deposit</div>
-          <div className="text-lg font-semibold">${formatUSDC(userAssets)}</div>
+        <div className="bg-gray-800/50 rounded-xl p-3">
+          <div className="text-xs text-gray-400 mb-1">Your Position</div>
+          <div className="font-semibold">{formatBalance(userAssets)} {vault.assetSymbol}</div>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-4">
+      <div className="flex gap-2 mb-3">
         <button
           onClick={() => setActiveTab('deposit')}
-          className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
             activeTab === 'deposit'
               ? 'bg-blue-600 text-white'
               : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
@@ -157,7 +176,7 @@ export function VaultCard() {
         </button>
         <button
           onClick={() => setActiveTab('withdraw')}
-          className={`flex-1 py-2 rounded-lg font-medium transition-colors ${
+          className={`flex-1 py-2 rounded-lg text-sm font-medium transition-colors ${
             activeTab === 'withdraw'
               ? 'bg-blue-600 text-white'
               : 'bg-gray-800 text-gray-400 hover:bg-gray-700'
@@ -168,11 +187,11 @@ export function VaultCard() {
       </div>
 
       {/* Input */}
-      <div className="mb-4">
-        <div className="flex justify-between text-sm text-gray-400 mb-2">
+      <div className="mb-3">
+        <div className="flex justify-between text-xs text-gray-400 mb-1">
           <span>Amount</span>
           <span>
-            Balance: {activeTab === 'deposit' ? formatUSDC(usdcBalance) : formatUSDC(userAssets)} USDC
+            Bal: {activeTab === 'deposit' ? formatBalance(assetBalance) : formatBalance(userAssets)} {vault.assetSymbol}
           </span>
         </div>
         <div className="relative">
@@ -181,14 +200,14 @@ export function VaultCard() {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
-            className="w-full bg-gray-800 rounded-xl px-4 py-3 pr-20 text-lg outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full bg-gray-800 rounded-xl px-4 py-3 pr-16 outline-none focus:ring-2 focus:ring-blue-500"
           />
           <button
             onClick={() => {
-              const max = activeTab === 'deposit' ? usdcBalance : userAssets
-              if (max) setAmount(formatUnits(max, 6))
+              const max = activeTab === 'deposit' ? assetBalance : userAssets
+              if (max) setAmount(formatUnits(max, vault.decimals))
             }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 px-2 py-1 bg-gray-700 hover:bg-gray-600 rounded text-xs transition-colors"
           >
             MAX
           </button>
@@ -197,7 +216,7 @@ export function VaultCard() {
 
       {/* Action Button */}
       {!isConnected ? (
-        <div className="text-center text-gray-400 py-4">Connect wallet to continue</div>
+        <div className="text-center text-gray-400 py-3 text-sm">Connect wallet</div>
       ) : activeTab === 'deposit' ? (
         needsApproval ? (
           <button
@@ -205,7 +224,7 @@ export function VaultCard() {
             disabled={isPending || isConfirming || !amount}
             className="w-full py-3 bg-yellow-600 hover:bg-yellow-500 disabled:bg-gray-700 disabled:cursor-not-allowed rounded-xl font-medium transition-colors"
           >
-            {isPending || isConfirming ? 'Approving...' : 'Approve USDC'}
+            {isPending || isConfirming ? 'Approving...' : `Approve ${vault.assetSymbol}`}
           </button>
         ) : (
           <button
@@ -228,9 +247,9 @@ export function VaultCard() {
 
       {/* Transaction Status */}
       {hash && (
-        <div className="mt-4 p-3 bg-gray-800/50 rounded-lg">
-          <div className="text-sm text-gray-400">
-            {isConfirming ? 'Confirming transaction...' : isSuccess ? 'Transaction confirmed!' : 'Transaction sent'}
+        <div className="mt-3 p-2 bg-gray-800/50 rounded-lg">
+          <div className="text-xs text-gray-400">
+            {isConfirming ? 'Confirming...' : isSuccess ? 'Confirmed!' : 'Sent'}
           </div>
           <a
             href={`https://mantlescan.xyz/tx/${hash}`}

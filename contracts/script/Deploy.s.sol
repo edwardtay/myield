@@ -52,6 +52,95 @@ contract DeployScript is Script {
     }
 }
 
+/// @title DeployWETHVault - Deploy WETH Vault with Multi-Strategy (Lendle + mETH)
+contract DeployWETHVault is Script {
+    address constant WETH = 0xdEAddEaDdeadDEadDEADDEAddEADDEAddead1111;
+
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address deployer = vm.addr(deployerPrivateKey);
+
+        console.log("=== mYield WETH Multi-Strategy Vault ===");
+        console.log("Deployer:", deployer);
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        // 1. Deploy WETH Vault (ERC4626)
+        mYieldVault wethVault = new mYieldVault(
+            IERC20(WETH),
+            "mYield WETH Vault",
+            "myWETH",
+            deployer
+        );
+        console.log("WETH Vault:", address(wethVault));
+
+        // 2. Deploy Lendle Adapter for WETH (60% allocation)
+        LendleAdapter lendleAdapter = new LendleAdapter(
+            address(wethVault),
+            WETH
+        );
+        console.log("Lendle WETH Adapter:", address(lendleAdapter));
+
+        // 3. Deploy mETH Adapter (40% allocation) - Liquid Staking Yield
+        METHAdapter methAdapter = new METHAdapter(
+            address(wethVault),
+            WETH
+        );
+        console.log("mETH Adapter:", address(methAdapter));
+
+        // 4. Add adapters with allocation split
+        // 60% Lendle (lending yield ~4-8% APY)
+        // 40% mETH (staking yield ~4% APY)
+        wethVault.addAdapter(address(lendleAdapter), 6000);
+        wethVault.addAdapter(address(methAdapter), 4000);
+        console.log("Adapters configured: 60% Lendle, 40% mETH");
+
+        vm.stopBroadcast();
+
+        console.log("\n=== WETH Vault Deployment Complete ===");
+        console.log("WETH Vault:      ", address(wethVault));
+        console.log("Lendle Adapter:  ", address(lendleAdapter));
+        console.log("mETH Adapter:    ", address(methAdapter));
+        console.log("Strategy:         Multi-yield (Lending + LST)");
+    }
+}
+
+/// @title DepositToVault - Make deposits to show real TVL
+contract DepositToVault is Script {
+    address constant USDC = 0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9;
+    address constant WETH = 0xdEAddEaDdeadDEadDEADDEAddEADDEAddead1111;
+
+    // Deployed vault addresses
+    address constant USDC_VAULT = 0xcfF09905F8f18B35F5A1Ba6d2822D62B3d8c48bE;
+
+    function run() external {
+        uint256 deployerPrivateKey = vm.envUint("PRIVATE_KEY");
+        address depositor = vm.addr(deployerPrivateKey);
+
+        console.log("=== Deposit to mYield Vaults ===");
+        console.log("Depositor:", depositor);
+
+        vm.startBroadcast(deployerPrivateKey);
+
+        // Check USDC balance
+        uint256 usdcBalance = IERC20(USDC).balanceOf(depositor);
+        console.log("USDC Balance:", usdcBalance);
+
+        if (usdcBalance > 0) {
+            // Approve and deposit USDC
+            IERC20(USDC).approve(USDC_VAULT, usdcBalance);
+            mYieldVault(USDC_VAULT).deposit(usdcBalance, depositor);
+            console.log("Deposited USDC:", usdcBalance);
+        }
+
+        vm.stopBroadcast();
+
+        // Show vault stats
+        console.log("\n=== Vault Stats ===");
+        console.log("USDC Vault TVL:", mYieldVault(USDC_VAULT).totalAssets());
+    }
+}
+
 contract DeployUSDCVault is Script {
     address constant USDC = 0x09Bc4E0D864854c6aFB6eB9A9cdF58aC190D0dF9;
 

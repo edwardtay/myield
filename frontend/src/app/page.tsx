@@ -2,7 +2,7 @@
 
 import { ConnectWallet } from '@/components/ConnectWallet'
 import { VaultCard } from '@/components/VaultCard'
-import { CONTRACTS } from '@/lib/contracts'
+import { CONTRACTS, VAULTS } from '@/lib/contracts'
 
 export default function Home() {
   return (
@@ -29,46 +29,36 @@ export default function Home() {
             </span>
           </h1>
           <p className="text-gray-400 text-lg max-w-2xl mx-auto">
-            Auto-rebalancing ERC4626 vaults that route deposits to optimal DeFi yield sources.
-            Deposit USDC and earn yield from Lendle lending protocol.
+            Multi-strategy ERC4626 vaults that route deposits to optimal DeFi yield sources.
+            Lendle lending, mETH staking, and more.
           </p>
         </div>
 
-        {/* Vault Card */}
-        <div className="max-w-md mx-auto mb-12">
-          <VaultCard />
+        {/* Vault Cards */}
+        <div className="grid md:grid-cols-2 gap-6 mb-12">
+          {VAULTS.map((vault) => (
+            <VaultCard key={vault.address} vault={vault} />
+          ))}
         </div>
 
-        {/* How it Works */}
+        {/* Protocol Integration */}
         <div className="bg-gray-900/50 rounded-2xl p-8 border border-gray-800 mb-12">
-          <h2 className="text-2xl font-bold mb-6 text-center">How It Works</h2>
+          <h2 className="text-2xl font-bold mb-6 text-center">Protocol Integrations</h2>
           <div className="grid md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="w-12 h-12 bg-blue-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">1</span>
-              </div>
-              <h3 className="font-semibold mb-2">Deposit USDC</h3>
-              <p className="text-sm text-gray-400">
-                Deposit USDC into the vault and receive myUSDC shares representing your position.
-              </p>
+            <div className="text-center p-4 bg-gray-800/30 rounded-xl">
+              <div className="text-3xl mb-2">🏦</div>
+              <h3 className="font-semibold mb-1">Lendle</h3>
+              <p className="text-sm text-gray-400">Aave V2 fork - Lending yield + LEND rewards</p>
             </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-purple-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">2</span>
-              </div>
-              <h3 className="font-semibold mb-2">Earn Yield</h3>
-              <p className="text-sm text-gray-400">
-                Your USDC is deployed to Lendle protocol to earn lending interest and LEND rewards.
-              </p>
+            <div className="text-center p-4 bg-gray-800/30 rounded-xl">
+              <div className="text-3xl mb-2">🔷</div>
+              <h3 className="font-semibold mb-1">mETH</h3>
+              <p className="text-sm text-gray-400">Mantle LST - Staking yield via Merchant Moe</p>
             </div>
-            <div className="text-center">
-              <div className="w-12 h-12 bg-green-600/20 rounded-full flex items-center justify-center mx-auto mb-4">
-                <span className="text-2xl">3</span>
-              </div>
-              <h3 className="font-semibold mb-2">Withdraw Anytime</h3>
-              <p className="text-sm text-gray-400">
-                Redeem your shares for USDC plus accumulated yield at any time.
-              </p>
+            <div className="text-center p-4 bg-gray-800/30 rounded-xl">
+              <div className="text-3xl mb-2">🔄</div>
+              <h3 className="font-semibold mb-1">Merchant Moe</h3>
+              <p className="text-sm text-gray-400">DEX for WETH ↔ mETH swaps</p>
             </div>
           </div>
         </div>
@@ -76,27 +66,35 @@ export default function Home() {
         {/* Contracts */}
         <div className="bg-gray-900/50 rounded-2xl p-8 border border-gray-800">
           <h2 className="text-2xl font-bold mb-6 text-center">Verified Contracts</h2>
-          <div className="space-y-4">
-            <div className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-gray-800/50 rounded-xl">
-              <span className="text-gray-400 mb-2 md:mb-0">mYield USDC Vault</span>
-              <a
-                href={`https://mantlescan.xyz/address/${CONTRACTS.MYIELD_VAULT}#code`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-sm text-blue-400 hover:underline break-all"
-              >
-                {CONTRACTS.MYIELD_VAULT}
+          <div className="space-y-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-gray-800/50 rounded-xl">
+              <span className="text-gray-400 mb-2 md:mb-0">USDC Vault</span>
+              <a href={`https://mantlescan.xyz/address/${CONTRACTS.USDC_VAULT}#code`} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-blue-400 hover:underline break-all">
+                {CONTRACTS.USDC_VAULT}
               </a>
             </div>
-            <div className="flex flex-col md:flex-row md:items-center justify-between p-4 bg-gray-800/50 rounded-xl">
-              <span className="text-gray-400 mb-2 md:mb-0">Lendle Adapter</span>
-              <a
-                href={`https://mantlescan.xyz/address/${CONTRACTS.LENDLE_ADAPTER}#code`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-mono text-sm text-blue-400 hover:underline break-all"
-              >
-                {CONTRACTS.LENDLE_ADAPTER}
+            <div className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-gray-800/50 rounded-xl">
+              <span className="text-gray-400 mb-2 md:mb-0">WETH Vault</span>
+              <a href={`https://mantlescan.xyz/address/${CONTRACTS.WETH_VAULT}#code`} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-blue-400 hover:underline break-all">
+                {CONTRACTS.WETH_VAULT}
+              </a>
+            </div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-gray-800/50 rounded-xl">
+              <span className="text-gray-400 mb-2 md:mb-0">Lendle USDC Adapter</span>
+              <a href={`https://mantlescan.xyz/address/${CONTRACTS.USDC_LENDLE_ADAPTER}#code`} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-blue-400 hover:underline break-all">
+                {CONTRACTS.USDC_LENDLE_ADAPTER}
+              </a>
+            </div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-gray-800/50 rounded-xl">
+              <span className="text-gray-400 mb-2 md:mb-0">Lendle WETH Adapter</span>
+              <a href={`https://mantlescan.xyz/address/${CONTRACTS.WETH_LENDLE_ADAPTER}#code`} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-blue-400 hover:underline break-all">
+                {CONTRACTS.WETH_LENDLE_ADAPTER}
+              </a>
+            </div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between p-3 bg-gray-800/50 rounded-xl">
+              <span className="text-gray-400 mb-2 md:mb-0">mETH Adapter</span>
+              <a href={`https://mantlescan.xyz/address/${CONTRACTS.WETH_METH_ADAPTER}#code`} target="_blank" rel="noopener noreferrer" className="font-mono text-xs text-blue-400 hover:underline break-all">
+                {CONTRACTS.WETH_METH_ADAPTER}
               </a>
             </div>
           </div>
