@@ -1,0 +1,30 @@
+# Private - keys, broadcasts, cache
+/private/
+
+# Dependencies
+node_modules/
+contracts/lib/
+
+# Build
+contracts/out/
+contracts/cache/
+frontend/.next/
+frontend/out/
+
+# Environment
+.env
+.env.*
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
