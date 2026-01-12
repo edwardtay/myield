@@ -103,8 +103,12 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="border-t border-gray-800 mt-12">
-        <div className="max-w-6xl mx-auto px-4 py-6 text-center text-gray-500 text-sm">
-          Built for Mantle Hackathon | DeFi &amp; Composability Track
+        <div className="max-w-6xl mx-auto px-4 py-6 flex items-center justify-center gap-4 text-gray-500 text-sm">
+          <span>mYield</span>
+          <span>·</span>
+          <a href="https://github.com/edwardtay/myield" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300">GitHub</a>
+          <span>·</span>
+          <a href="https://mantlescan.xyz" target="_blank" rel="noopener noreferrer" className="hover:text-gray-300">MantleScan</a>
         </div>
       </footer>
     </div>

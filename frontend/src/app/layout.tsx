@@ -14,8 +14,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "mYield - Yield Aggregator on Mantle",
-  description: "Composable yield aggregator for Mantle. Auto-rebalancing ERC4626 vaults.",
+  title: "mYield",
+  description: "Multi-strategy yield aggregator on Mantle",
+  icons: {
+    icon: "/icon.svg",
+  },
 };
 
 export default function RootLayout({
