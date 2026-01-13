@@ -2,6 +2,8 @@
 
 Multi-strategy ERC4626 yield aggregator on Mantle. Routes capital across Lendle and mETH via Merchant Moe.
 
+**Live:** https://myield.vercel.app
+
 ## Deployments (Mantle Mainnet)
 
 | Contract | Address |
