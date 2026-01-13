@@ -8,6 +8,7 @@ import { mantle } from '@/lib/wagmi'
 import { useToast } from '@/hooks/useToast'
 import { Skeleton } from './Skeleton'
 import { StrategyChart, USDC_STRATEGIES, WETH_STRATEGIES } from './StrategyChart'
+import { VaultDetails } from './VaultDetails'
 
 interface VaultConfig {
   name: string
@@ -26,6 +27,7 @@ export function VaultCard({ vault }: { vault: VaultConfig }) {
   const [amount, setAmount] = useState('')
   const [activeTab, setActiveTab] = useState<'deposit' | 'withdraw'>('deposit')
   const [mounted, setMounted] = useState(false)
+  const [showDetails, setShowDetails] = useState(false)
   const { switchChain } = useSwitchChain()
   const { showToast, updateToast } = useToast()
   const [toastId, setToastId] = useState<string | null>(null)
@@ -310,6 +312,26 @@ export function VaultCard({ vault }: { vault: VaultConfig }) {
         >
           {isPending || isConfirming ? 'Harvesting...' : 'Harvest Rewards'}
         </button>
+      )}
+
+      {/* Details Button */}
+      <button
+        onClick={() => setShowDetails(true)}
+        className="w-full mt-2 py-2 text-sm text-gray-400 hover:text-gray-300 transition-colors"
+      >
+        View Details & Risk Analysis
+      </button>
+
+      {/* Details Modal */}
+      {showDetails && (
+        <VaultDetails
+          vaultType={vault.assetSymbol === 'USDC' ? 'usdc' : 'weth'}
+          apy={weightedAPY ? Number(weightedAPY) / 100 : 0}
+          symbol={vault.assetSymbol}
+          currentPosition={userAssets ? parseFloat(formatUnits(userAssets, vault.decimals)) : 0}
+          tvl={totalAssets ? parseFloat(formatUnits(totalAssets, vault.decimals)) : 0}
+          onClose={() => setShowDetails(false)}
+        />
       )}
     </div>
   )

@@ -30,8 +30,8 @@ export default function Home() {
             </span>
           </h1>
           <p className="text-gray-400 text-base sm:text-lg max-w-2xl mx-auto px-4">
-            Multi-strategy ERC4626 vaults that route deposits to optimal DeFi yield sources.
-            Lendle lending, mETH staking, and more.
+            ERC4626 vaults with automated yield strategies. Choose your asset, we optimize the yield
+            across Lendle lending and mETH liquid staking.
           </p>
         </div>
 
